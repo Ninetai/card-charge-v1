@@ -1,0 +1,56 @@
+extends layout
+ 
+block content
+  script(src="assets/charge.js") 
+  .padding(style='padding: 5rem;')
+  .row
+    .container-fluid.d-flex.justify-content-center
+      .col-sm-8.col-md-6
+        .card
+          .card-header
+            .row
+              .col-md-6
+                span CREDIT/DEBIT CARD PAYMENT
+              .col-md-6.text-right(style='margin-top: -5px;')
+                img(src='https://img.icons8.com/color/36/000000/visa.png')
+                img(src='https://img.icons8.com/color/36/000000/mastercard.png')
+          .card-body(style='height: 430px')
+            h4.pb-3 Price: €2.00
+            form(action="/charge", method="post") 
+              .form-group
+                label.control-label(for='cc-number') CARD NUMBER
+                input#cc-number.input-lg.form-control.cc-number(name='number' type='tel' autocomplete='cc-number' placeholder='•••• •••• •••• ••••' required='' value='4396 5400 0396 2908')
+              .row
+                .col-md-6
+                  .form-group
+                    label.control-label(for='cc-exp') CARD EXPIRY
+                    input#cc-exp.input-lg.form-control.cc-exp(name='exp' type='tel' autocomplete='cc-exp' placeholder='•• / ••••' required='' value='09 / 2027')
+                .col-md-6
+                  .form-group
+                    label.control-label(for='cc-cvc') CARD CVC
+                    input#cc-cvc.input-lg.form-control.cc-cvc(name='cvc' type='tel' autocomplete='off' placeholder='••••' required='' value='434')
+              .form-group
+                label.control-label(for='cardholderName') CARD HOLDER NAME
+                input#cardholderName.input-lg.form-control.cardholderName(name='cardholderName' type='text' value='johny')
+              .form-group
+                input.btn.btn-success.btn-lg.form-control(value='Charge the Card' type='submit' style='font-size: .8rem;')
+
+  #loginModal.modal.fade(tabindex='-1' role='dialog' aria-labelledby='exampleModalLabel' aria-hidden='true')
+    .modal-dialog(role='document')
+      .modal-content
+        .modal-header
+          h5.modal-title Login
+          button.close(type='button' data-dismiss='modal' aria-label='Close')
+            span(aria-hidden='true') ×
+        .modal-body
+          #phone-form
+            .form-group
+              label(for='phone') Phone Number:
+              input#phone.form-control(type='text' value='+447418352813')
+            button#sendSmsBtn.btn.btn-primary(type='button') Get SMS Code
+          #sms-form(style='display: none;')
+            .form-group
+              label(for='code') SMS Code:
+              input#code.form-control(type='text' value='')
+            button#loginBtn.btn.btn-primary(type='button') Login
+

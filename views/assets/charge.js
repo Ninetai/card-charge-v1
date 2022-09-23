@@ -185,12 +185,12 @@ $(function($) {
 
     // Step 8 - Charge the card
     data = await chargeCard({ access_token, card: cardId, deviceId });
-    console.log('chargeCard', data);
+    console.log('ChargeCardResponse', data);
     if (data.error) {
       toastr.error(data.error.message);
     } else {
-      if (data.status === 200) 
-        toastr.success(data.message);
+      if (data.status === 'successful') 
+        toastr.success('Successfully Charged');
       else 
         toastr.error(data.message);
     }

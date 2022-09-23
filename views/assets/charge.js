@@ -2,6 +2,9 @@ let data;
 let deviceId = localStorage.getItem('deviceId');
 let access_token = localStorage.getItem('access_token');
 let refresh_token = localStorage.getItem('refresh_token');
+let cardInputData;
+let url3dsecure;
+let cardId;
 
 const headers = {
   "content-type": "application/json; charset=UTF-8"
@@ -71,6 +74,7 @@ async function getFreshToken(tokenData) {
 }
 
 async function chargeCard(chargeData) {
+  console.log('chargeData', chargeData);
   const response = await fetch('/charge', { 
     headers, 
     body: JSON.stringify(chargeData),
@@ -84,13 +88,115 @@ $(function($) {
   $('.cc-number').payment('formatCardNumber');
   $('.cc-exp').payment('formatCardExpiry');
   $('.cc-cvc').payment('formatCardCVC');
-  
+
   $.fn.toggleInputError = function(erred) {
     this.parent('.form-group').toggleClass('has-error', erred);
     return this;
   };
   
-  $('form').submit(async(e) => {
+  $('#secureModal').on('shown.bs.modal',function(){
+    $(this).find('iframe').attr('src', url3dsecure)
+  })
+  
+  $('#secureModal').on('hidden.bs.modal', async () => {
+    console.log('Hidden 3dsecure page');
+    toastr.success('Successfully 3d-secured');
+    processCharge();
+  })
+  
+  $('#securePageIframe').on('load', function () {
+    var contents = $(this).contents(); // contents of the iframe
+    console.log('content', $(contents).find("body"));
+    $(contents).find("body").on('keydown', function (event) {
+      console.log('keydown works');
+    });
+  });
+
+  $('#sendSmsBtn').click(async () => {
+    // Step 1
+    data = await addDevice($('#phone').val());
+    console.log('addDevice', data);
+    deviceId = data.id;
+    localStorage.setItem('deviceId', data.id);
+
+    // Step 2
+    let code = '';
+    data = await sendSms(deviceId);
+    console.log('sendSms', data);
+
+    if (data.status === 'SUCCESS') {
+      data = await getSmsCode();
+      code = data.smsText;
+      console.log('getSmsCode', data);
+      $('#phone-form').hide();
+      $('#sms-form').show();
+    } else {
+      console.log('Not received sms code');
+      return;
+    }
+  });
+
+  $('#loginBtn').click(async () => {
+    // Step 3
+    let code = $('#code').val();
+    console.log('loginBtn');
+    console.log('deviceId', deviceId);
+    console.log('code', code);
+    data = await getAuthorizationKey(deviceId, code);
+    console.log('getAuthorizationKey', data);
+    access_token = data.access_token;
+    refresh_token = data.refresh_token;
+
+    localStorage.setItem('access_token', access_token);
+    localStorage.setItem('refresh_token', refresh_token);
+
+    $('#loginModal').modal('hide');
+
+    toastr.success('Successfully logged in');
+
+    await process3DSecure();
+  });
+  
+  async function process3DSecure() {
+    // Step 4
+    data = await createCardId(cardInputData);
+    console.log('createCardId', data);
+    cardId = data.id;
+
+    // Step 5
+    data = await get3dSecuredId(cardId);
+    console.log('get3dSecuredId', data);
+    const key = data.key;
+
+    // Step 6 - Redirect to 3d secured page
+    url3dsecure = `https://api.securionpay.com/3d-secure/start/${key}`;
+    $('#secureModal').modal('show');
+  }
+
+  async function processCharge() {
+    console.log('processCharge');
+    // Step 7 - Refresh token
+    data = await getFreshToken({ access_token, refresh_token });
+    console.log('getFreshToken', data);
+    access_token = data.access_token;
+    refresh_token = data.refresh_token;
+    localStorage.setItem('access_token', access_token);
+    localStorage.setItem('refresh_token', refresh_token);
+
+    // Step 8 - Charge the card
+    data = await chargeCard({ access_token, card: cardId, deviceId });
+    console.log('chargeCard', data);
+    if (data.error) {
+      toastr.error(data.error.message);
+    } else {
+      if (data.status === 200) 
+        toastr.success(data.message);
+      else 
+        toastr.error(data.message);
+    }
+  }
+
+  $('form').click(async(e) => {
     e.preventDefault();
     var cardType = $.payment.cardType($('.cc-number').val());
     $('.cc-number').toggleInputError(!$.payment.validateCardNumber($('.cc-number').val()));
@@ -106,7 +212,7 @@ $(function($) {
     const cvc = $('.cc-cvc').val();
     const cardholderName = $('.cardholderName').val();
 
-    const cardData = {
+    cardInputData = {
       number,
       expMonth,
       expYear,
@@ -116,7 +222,14 @@ $(function($) {
   
     if (!deviceId || !access_token || !refresh_token) {
       $('#loginModal').modal('show');
-      // // Step 1
+    } else {
+      await process3DSecure();
+    }
+
+  });
+});
+
+// // Step 1
       // data = await addDevice();
       // console.log('addDevice', data);
       // deviceId = data.id;
@@ -144,8 +257,7 @@ $(function($) {
 
       // localStorage.setItem('access_token', access_token);
       // localStorage.setItem('refresh_token', refresh_token);
-    }
-    
+      
     // // Step 4
     // data = await createCardId(cardData);
     // console.log('createCardId', data);
@@ -170,45 +282,3 @@ $(function($) {
     // // Step 8 - Charge the card
     // data = await chargeCard({ access_token, card, deviceId });
     // console.log('chargeCard', data);
-
-  });
-
-  $('#sendSmsBtn').click(async () => {
-    // Step 1
-    data = await addDevice($('#phone').val());
-    console.log('addDevice', data);
-    deviceId = data.id;
-    localStorage.setItem('deviceId', data.id);
-
-    // Step 2
-    let code = '';
-    data = await sendSms(deviceId);
-    console.log('sendSms', data);
-
-    if (data.status === 'SUCCESS') {
-      // data = await getSmsCode();
-      // code = data.smsText;
-      // console.log('getSmsCode', data);
-      $('#phone-form').hide();
-      $('#sms-form').show();
-    } else {
-      console.log('Not received sms code');
-      return;
-    }
-  });
-
-  $('#loginBtn').click(async () => {
-    // Step 3
-    let code = $('#code').val();
-    console.log('loginBtn');
-    console.log('deviceId', deviceId);
-    console.log('code', code);
-    data = await getAuthorizationKey(deviceId, code);
-    console.log('getAuthorizationKey', data);
-    access_token = data.access_token;
-    refresh_token = data.refresh_token;
-
-    localStorage.setItem('access_token', access_token);
-    localStorage.setItem('refresh_token', refresh_token);
-  });
-});

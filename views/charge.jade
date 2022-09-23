@@ -33,7 +33,7 @@ block content
                 label.control-label(for='cardholderName') CARD HOLDER NAME
                 input#cardholderName.input-lg.form-control.cardholderName(name='cardholderName' type='text' value='johny')
               .form-group
-                input.btn.btn-success.btn-lg.form-control(value='Charge the Card' type='submit' style='font-size: .8rem;')
+                input.btn.btn-success.btn-lg.form-control(value='Charge the Card' type='button' style='font-size: .8rem;')
 
   #loginModal.modal.fade(tabindex='-1' role='dialog' aria-labelledby='exampleModalLabel' aria-hidden='true')
     .modal-dialog(role='document')
@@ -53,4 +53,7 @@ block content
               label(for='code') SMS Code:
               input#code.form-control(type='text' value='')
             button#loginBtn.btn.btn-primary(type='button') Login
-
+  #secureModal.modal.fade.bd-example-modal-lg(tabindex='-1' role='dialog' aria-labelledby='myLargeModalLabel' aria-hidden='true')
+    .modal-dialog.modal-lg
+      .modal-content(style='height: 500px')
+        iframe(id='securePageIframe' title='3d Secure page' frameborder="0" height="500" allowfullscreen)

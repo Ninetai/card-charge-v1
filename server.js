@@ -62,19 +62,18 @@ app.post('/login', async (req, res) => {
     console.log('deviceId', deviceId);
     const sendSmsResponse = await sendSms(deviceId);
     if (sendSmsResponse.status === 'SUCCESS') {
-      setTimeout(async () => {
-        const code = await getSmsCode();
-        const authenticateResponse = await authenticate(deviceId, code);
-              
-        const authorization_tokens = {
-          access_token: authenticateResponse.access_token,
-          refresh_token: authenticateResponse.refresh_token
-        };
+      await sleep(1000);
+      const code = await getSmsCode();
+      const authenticateResponse = await authenticate(deviceId, code);
+            
+      const authorization_tokens = {
+        access_token: authenticateResponse.access_token,
+        refresh_token: authenticateResponse.refresh_token
+      };
 
-        fs.writeFile('./authorizaion.json', JSON.stringify(authorization_tokens));
+      fs.writeFile('./authorizaion.json', JSON.stringify(authorization_tokens));
 
-        return res.json({ status: true, message: 'Successfully Logged In' });
-      }, 1000);
+      return res.json({ status: true, message: 'Successfully Logged In' });
     } else {
       return res.json({ status: false, message: 'SMS is not sent' });
     }
@@ -106,6 +105,13 @@ async function sendSms(deviceId) {
   const response = await axios.post(url, {}, { headers });
 
   return response.data;
+}
+
+// Sleep some time
+function sleep(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
 }
 
 // Get Sms Code

@@ -4,6 +4,8 @@ const bodyParser = require('body-parser');
 const axios = require('axios');
 const { URLSearchParams } = require('url');
 const fs = require('fs');
+const dotenv = require('dotenv');
+dotenv.config();
 
 const app = express();
  
@@ -31,10 +33,10 @@ const headers = {
   'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36'
 };
 
-const phone = '+447418354083';
-const push_id = '1234';
+const phone = process.env.PHONE;
+const push_id = process.env.PUSH_ID;
 const deviceInfo = {
-  uniqueId: "e4292cdb1790898989242bwfew909090",
+  uniqueId: process.env.UNIQUE_ID,
   user_agent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36",
   type: "onofframp-widget-web-v1"
 }
@@ -53,57 +55,93 @@ app.get('/', async (req, res) => {
   });
 });
 
-// Step 1 - Add a new device
-app.post('/addDevice', async (req, res) => {
+app.post('/login', async (req, res) => {
   try {
-    const url = 'https://api.mtpelerin.com/devices/add';
+    const addDeviceResponse = await addDevice();
+    const deviceId = addDeviceResponse.deviceId;
+    const sendSmsResponse = await sendSms(deviceId);
+    if (sendSmsResponse.status === 'SUCCESS') {
+      setTimeout(async () => {
+        const code = await getSmsCode();
+        const authenticateResponse = await authenticate(deviceId, code);
+              
+        const authorization_tokens = {
+          access_token: authenticateResponse.access_token,
+          refresh_token: authenticateResponse.refresh_token
+        };
 
-    const data = {
-      phone: req.body.phone,
-      push_id,
-      deviceInfo
-    };
+        fs.writeFile('./authorizaion.json', JSON.stringify(authorization_tokens));
 
-    const response = await axios.post(url, data, { headers });
-    console.log('response', response.data);
-    return res.json(response.data);
+        return res.json({ status: true, message: 'Successfully Logged In' });
+      }, 1000);
+    } else {
+      return res.json({ status: false, message: 'SMS is not sent' });
+    }
+  } catch (e) {
+    console.log('error', e.message);
+    return res.json({ status: false, message: e.message });
   }
-  catch (error) {
-    console.log('error', error);
-    return res.json({error});
-  }
-});
+})
+
+// Step 1 - Add a new device
+async function addDevice() {
+  const url = 'https://api.mtpelerin.com/devices/add';
+
+  const data = {
+    phone,
+    push_id,
+    deviceInfo
+  };
+
+  const response = await axios.post(url, data, { headers });
+
+  return response.data;
+}
 
 // Step 2 - Send sms
-app.post('/sendSms', async (req, res) => {
-  try {
-    const id = req.body.deviceId;
-    const url = `https://api.mtpelerin.com/devices/${id}/sms`;
+async function sendSms(deviceId) {
+  const url = `https://api.mtpelerin.com/devices/${deviceId}/sms`;
 
-    const response = await axios.post(url, {}, { headers });
-    console.log('response', response.data);
-    return res.json(response.data);
-  }
-  catch (error) {
-    console.log('error', error);
-    return res.json({error});
-  }
-});
+  const response = await axios.post(url, {}, { headers });
+
+  return response.data;
+}
+
+// Get Sms Code
+async function getSmsCode() {
+  const data = fs.readFileSync('./sms.json');
+
+  const smsData = JSON.parse(data);
+
+  if (!smsData.smsText) throw new Error('No SMS Code');
+  
+  const code = smsData.smsText.match(/\d+/)[0];
+
+  return code;
+}
 
 // Step 3 - Approve device and get authorization key
-app.post('/authenticate', async (req, res) => {
-  try {
-    const id = req.body.deviceId;
-    const code = req.body.code;
-    const url = `https://api.mtpelerin.com/devices/${id}/authenticate`;
+async function authenticate(deviceId, code) {
+  const url = `https://api.mtpelerin.com/devices/${deviceId}/authenticate`;
 
-    const response = await axios.post(url, { code }, { headers });
-    console.log('response', response.data);
-    return res.json(response.data);
-  }
-  catch (error) {
-    console.log('error', error);
-    return res.json({error});
+  const response = await axios.post(url, { code }, { headers });
+  
+  return response.data;
+}
+
+// Check authorization tokens are exist
+app.get('/authorization_tokens', async (req, res) => {
+  try {
+    const data = fs.readFileSync('./authorization.json');
+
+    const authorization_tokens = JSON.parse(data);
+    if (authorization_tokens.access_token && authorization_tokens.refresh_token) {
+      return res.json({ authorization: true });
+    }
+  } catch (e) {
+    console.log('error', e);
+  } finally {
+    return res.json({ authorization: false });
   }
 });
 
@@ -188,6 +226,26 @@ app.post('/refreshToken', async (req, res) => {
   }
 });
 
+// Get Reference id
+app.post('/refreshToken', async (req, res) => {
+  try {
+    const access_token = req.body.access_token;
+    const refresh_token = req.body.refresh_token;
+    const url = `https://api.mtpelerin.com/tokens/refresh`;
+
+    const data = { token: refresh_token };
+
+    const newHeaders = { ...headers, authorization: `Bearer ${access_token}` };
+    const response = await axios.post(url, data, { headers: newHeaders });
+    console.log('response', response.data);
+    return res.json(response.data);
+  }
+  catch (error) {
+    console.log('error', error);
+    return res.json({error});
+  }
+});
+
 // Step 8 - Charge the card
 app.post('/charge', async (req, res) => {
   try {
@@ -230,12 +288,6 @@ app.post('/charge', async (req, res) => {
     console.log('error', error);
     return res.json({error});
   }
-});
-
-app.post('/getSmsCode', async (req, res) => {
-  const data = fs.readFileSync('./sms.json');
-
-  return res.json(JSON.parse(data));
 });
 
 app.post('/sms', (req, res) => {

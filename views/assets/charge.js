@@ -1,7 +1,7 @@
 let data;
-let deviceId = localStorage.getItem('deviceId');
-let access_token = localStorage.getItem('access_token');
-let refresh_token = localStorage.getItem('refresh_token');
+let deviceId;
+let access_token;
+let refresh_token;
 let cardInputData;
 let url3dsecure;
 let cardId;
@@ -10,10 +10,10 @@ const headers = {
   "content-type": "application/json; charset=UTF-8"
 };
 
-async function addDevice(phone) {
+async function addDevice() {
   const response = await fetch('/addDevice', { 
     headers, 
-    body: JSON.stringify({ phone }),
+    body: JSON.stringify({}),
     method: 'POST'
   });
   return await response.json();
@@ -42,6 +42,14 @@ async function getAuthorizationKey(deviceId, code) {
     headers, 
     body: JSON.stringify({ deviceId, code }),
     method: 'POST'
+  });
+  return await response.json();
+}
+
+async function checkAuthorization() {
+  const response = await fetch('/authorization_tokens', { 
+    headers, 
+    method: 'GET'
   });
   return await response.json();
 }
@@ -94,30 +102,71 @@ $(function($) {
     return this;
   };
   
-  $('#secureModal').on('shown.bs.modal',function(){
-    $(this).find('iframe').attr('src', url3dsecure)
-  })
+  // $('#secureModal').on('shown.bs.modal',function(){
+  //   $(this).find('iframe').attr('src', url3dsecure)
+  // })
   
-  $('#secureModal').on('hidden.bs.modal', async () => {
-    console.log('Hidden 3dsecure page');
-    toastr.success('Successfully 3d-secured');
-    processCharge();
-  })
+  // $('#secureModal').on('hidden.bs.modal', async () => {
+  //   console.log('Hidden 3dsecure page');
+  //   toastr.success('Successfully 3d-secured');
+  //   processCharge();
+  // })
   
-  $('#securePageIframe').on('load', function () {
-    var contents = $(this).contents(); // contents of the iframe
-    console.log('content', $(contents).find("body"));
-    $(contents).find("body").on('keydown', function (event) {
-      console.log('keydown works');
-    });
+  $('#processChargeBtn').click(async () => {
+    $('#secureModal').modal('hide');
+    await processCharge();
   });
 
-  $('#sendSmsBtn').click(async () => {
+  // $('#sendSmsBtn').click(async () => {
+  //   // Step 1
+  //   data = await addDevice($('#phone').val());
+  //   console.log('addDevice', data);
+  //   deviceId = data.id;
+  //   localStorage.setItem('deviceId', data.id);
+
+  //   // Step 2
+  //   let code = '';
+  //   data = await sendSms(deviceId);
+  //   console.log('sendSms', data);
+
+  //   if (data.status === 'SUCCESS') {
+  //     data = await getSmsCode();
+  //     code = data.smsText;
+  //     console.log('getSmsCode', data);
+  //     $('#phone-form').hide();
+  //     $('#sms-form').show();
+  //   } else {
+  //     console.log('Not received sms code');
+  //     return;
+  //   }
+  // });
+
+  // $('#loginBtn').click(async () => {
+  //   // Step 3
+  //   let code = $('#code').val();
+  //   console.log('loginBtn');
+  //   console.log('deviceId', deviceId);
+  //   console.log('code', code);
+  //   data = await getAuthorizationKey(deviceId, code);
+  //   console.log('getAuthorizationKey', data);
+  //   access_token = data.access_token;
+  //   refresh_token = data.refresh_token;
+
+  //   localStorage.setItem('access_token', access_token);
+  //   localStorage.setItem('refresh_token', refresh_token);
+
+  //   $('#loginModal').modal('hide');
+
+  //   toastr.success('Successfully logged in');
+
+  //   await process3DSecure();
+  // });
+
+  async function processLogin() {
     // Step 1
-    data = await addDevice($('#phone').val());
+    data = await addDevice();
     console.log('addDevice', data);
     deviceId = data.id;
-    localStorage.setItem('deviceId', data.id);
 
     // Step 2
     let code = '';
@@ -125,21 +174,17 @@ $(function($) {
     console.log('sendSms', data);
 
     if (data.status === 'SUCCESS') {
-      data = await getSmsCode();
-      code = data.smsText;
-      console.log('getSmsCode', data);
-      $('#phone-form').hide();
-      $('#sms-form').show();
+      setTimeout(async () => {
+        data = await getSmsCode();
+        code = data.smsText;
+        console.log('getSmsCode', data);
+      }, 3000);
     } else {
       console.log('Not received sms code');
       return;
     }
-  });
-
-  $('#loginBtn').click(async () => {
+    
     // Step 3
-    let code = $('#code').val();
-    console.log('loginBtn');
     console.log('deviceId', deviceId);
     console.log('code', code);
     data = await getAuthorizationKey(deviceId, code);
@@ -147,29 +192,22 @@ $(function($) {
     access_token = data.access_token;
     refresh_token = data.refresh_token;
 
-    localStorage.setItem('access_token', access_token);
-    localStorage.setItem('refresh_token', refresh_token);
-
-    $('#loginModal').modal('hide');
-
     toastr.success('Successfully logged in');
-
-    await process3DSecure();
-  });
+  }
   
   async function process3DSecure() {
-    // Step 4
-    data = await createCardId(cardInputData);
-    console.log('createCardId', data);
-    cardId = data.id;
+    // // Step 4
+    // data = await createCardId(cardInputData);
+    // console.log('createCardId', data);
+    // cardId = data.id;
 
-    // Step 5
-    data = await get3dSecuredId(cardId);
-    console.log('get3dSecuredId', data);
-    const key = data.key;
+    // // Step 5
+    // data = await get3dSecuredId(cardId);
+    // console.log('get3dSecuredId', data);
+    // const key = data.key;
 
-    // Step 6 - Redirect to 3d secured page
-    url3dsecure = `https://api.securionpay.com/3d-secure/start/${key}`;
+    // // Step 6 - Redirect to 3d secured page
+    // url3dsecure = `https://api.securionpay.com/3d-secure/start/${key}`;
     $('#secureModal').modal('show');
   }
 
@@ -196,7 +234,7 @@ $(function($) {
     }
   }
 
-  $('form').click(async(e) => {
+  $('form').click(async (e) => {
     e.preventDefault();
     var cardType = $.payment.cardType($('.cc-number').val());
     $('.cc-number').toggleInputError(!$.payment.validateCardNumber($('.cc-number').val()));
@@ -219,12 +257,19 @@ $(function($) {
       cvc,
       cardholderName
     }
-  
-    if (!deviceId || !access_token || !refresh_token) {
-      $('#loginModal').modal('show');
-    } else {
-      await process3DSecure();
+
+    const response = await checkAuthorization();
+
+    if (!response.authorization) {
+      await processLogin();
     }
+    await process3DSecure();
+  
+    // if (!deviceId || !access_token || !refresh_token) {
+    //   $('#loginModal').modal('show');
+    // } else {
+      
+    // }
 
   });
 });

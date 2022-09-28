@@ -102,7 +102,7 @@ async function addDevice() {
 async function sendSms(deviceId) {
   const url = `https://api.mtpelerin.com/devices/${deviceId}/sms`;
 
-  const response = await axios.post('http://node-gb-4.astroproxy.com:10669', {}, { headers, proxy: { host: url, port: 80 } });
+  const response = await axios.post(url, {}, { headers });
 
   return response.data;
 }

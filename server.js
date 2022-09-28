@@ -58,7 +58,8 @@ app.get('/', async (req, res) => {
 app.post('/login', async (req, res) => {
   try {
     const addDeviceResponse = await addDevice();
-    const deviceId = addDeviceResponse.deviceId;
+    const deviceId = addDeviceResponse.id;
+    console.log('deviceId', deviceId);
     const sendSmsResponse = await sendSms(deviceId);
     if (sendSmsResponse.status === 'SUCCESS') {
       setTimeout(async () => {

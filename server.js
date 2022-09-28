@@ -62,7 +62,7 @@ app.post('/login', async (req, res) => {
     console.log('deviceId', deviceId);
     const sendSmsResponse = await sendSms(deviceId);
     if (sendSmsResponse.status === 'SUCCESS') {
-      await sleep(3000);
+      await sleep(10000);
       const code = await getSmsCode();
       const authenticateResponse = await authenticate(deviceId, code);
             

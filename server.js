@@ -79,7 +79,7 @@ app.post('/login', async (req, res) => {
     }
   } catch (e) {
     console.log('error', e.message);
-    return res.json({ status: false, message: e.message });
+    return res.json({ status: false, message: e });
   }
 })
 

@@ -8,7 +8,7 @@ const fs = require('fs');
 const dotenv = require('dotenv');
 dotenv.config();
 
-const httpsAgent = new HttpsProxyAgent({ host: 'http://node-gb-4.astroproxy.com', port: '10669' });
+const httpsAgent = new HttpsProxyAgent({ host: 'node-gb-4.astroproxy.com', port: '10669' });
 
 axios = axios.create({httpsAgent});
 

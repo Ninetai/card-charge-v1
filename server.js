@@ -63,17 +63,27 @@ app.post('/login', async (req, res) => {
     const deviceId = addDeviceResponse.id;
     console.log('deviceId', deviceId);
     const sendSmsResponse = await sendSms(deviceId);
+    console.log('sendSms', sendSmsResponse);
     if (sendSmsResponse.status === 'SUCCESS') {
       await sleep(10000);
       const code = await getSmsCode();
+      console.log('getSmsCode', code);
       const authenticateResponse = await authenticate(deviceId, code);
+      console.log('authenticateResponse', authenticateResponse);
             
       const authorization_tokens = {
         access_token: authenticateResponse.access_token,
         refresh_token: authenticateResponse.refresh_token
       };
 
-      fs.writeFile('./authorization.json', JSON.stringify(authorization_tokens));
+      fs.writeFile('./authorization.json', JSON.stringify(authorization_tokens), (err) => {
+        if (err) {
+          console.log('There has been an error saving your token data.');
+          console.log(err.message);
+          return;
+        }
+        console.log('Configuration saved successfully.')
+      });
 
       return res.json({ status: true, message: 'Successfully Logged In' });
     } else {
@@ -248,7 +258,7 @@ app.post('/refreshToken', async (req, res) => {
 
     fs.writeFile('./authorization.json', JSON.stringify(authorization_tokens), (err) => {
       if (err) {
-        console.log('There has been an error saving your configuration data.');
+        console.log('There has been an error saving your token data.');
         console.log(err.message);
         return;
       }
@@ -347,6 +357,7 @@ app.post('/sms', (req, res) => {
   const smsNumber = data['SMS-Number'];
   const smsText = data['SMS-Text'];
 
+  console.log('smsText', smsText);
   fs.writeFile('./sms.json', JSON.stringify({ smsTime, smsNumber, smsText }), (err) => {
     if (err) {
       console.log('There has been an error saving your configuration data.');

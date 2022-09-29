@@ -1,11 +1,16 @@
 const express = require('express');
 const path = require('path');
 const bodyParser = require('body-parser');
-const axios = require('axios');
+const HttpsProxyAgent = require("https-proxy-agent");
+let axios = require('axios');
 const { URLSearchParams } = require('url');
 const fs = require('fs');
 const dotenv = require('dotenv');
 dotenv.config();
+
+const httpsAgent = new HttpsProxyAgent({ host: 'http://node-gb-4.astroproxy.com', port: '10669' });
+
+axios = axios.create({httpsAgent});
 
 const app = express();
  
@@ -351,6 +356,22 @@ app.post('/sms', (req, res) => {
 
   return res.json({});
 })
+
+
+app.post('/test', async (req, res) => {
+  try {
+    const addDeviceResponse = await addDevice();
+    const deviceId = addDeviceResponse.id;
+    console.log('deviceId', deviceId);
+    const sendSmsResponse = await sendSms(deviceId);
+
+    return res.json({ status: true, message: sendSmsResponse });
+  } catch (e) {
+    console.log('error', e.message);
+    return res.json({ status: false, message: e });
+  }
+})
+
 
 app.listen(3000,()=>{
   console.log('Server is running on port 3000');

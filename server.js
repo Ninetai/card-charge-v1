@@ -71,7 +71,7 @@ app.post('/login', async (req, res) => {
         refresh_token: authenticateResponse.refresh_token
       };
 
-      fs.writeFile('./authorizaion.json', JSON.stringify(authorization_tokens));
+      fs.writeFile('./authorization.json', JSON.stringify(authorization_tokens));
 
       return res.json({ status: true, message: 'Successfully Logged In' });
     } else {
@@ -145,9 +145,9 @@ app.get('/authorization_tokens', async (req, res) => {
     if (authorization_tokens.access_token && authorization_tokens.refresh_token) {
       return res.json({ authorization: true });
     }
+    return res.json({ authorization: false });
   } catch (e) {
     console.log('error', e);
-  } finally {
     return res.json({ authorization: false });
   }
 });
@@ -164,7 +164,7 @@ app.post('/tokens', async (req, res) => {
     return res.json(response.data);
   }
   catch (error) {
-    console.log('error', error);
+    console.log('error', error.message);
     return res.json({error});
   }
 });
@@ -208,7 +208,7 @@ app.post('/3d-secure', async (req, res) => {
     return res.json(response.data);
   }
   catch (error) {
-    console.log('error', error);
+    console.log('error', error.message);
     return res.json({error});
   }
 });
@@ -216,34 +216,70 @@ app.post('/3d-secure', async (req, res) => {
 // Step 7 - get a fresh token
 app.post('/refreshToken', async (req, res) => {
   try {
-    const access_token = req.body.access_token;
-    const refresh_token = req.body.refresh_token;
+    const authorizationData = fs.readFileSync('./authorization.json');
+
+    const old_tokens = JSON.parse(authorizationData);
+    const access_token = old_tokens.access_token;
+    const refresh_token = old_tokens.refresh_token;
+    console.log('access_token', access_token);
+    console.log('refresh_token', refresh_token);
+
     const url = `https://api.mtpelerin.com/tokens/refresh`;
 
     const data = { token: refresh_token };
 
     const newHeaders = { ...headers, authorization: `Bearer ${access_token}` };
     const response = await axios.post(url, data, { headers: newHeaders });
+
+    console.log('refreshTokenResponse', response);
+
+    const authorization_tokens = {
+      access_token: response.data.access_token,
+      refresh_token: response.data.refresh_token
+    };
+    console.log('authorization_tokens', authorization_tokens);
+
+    fs.writeFile('./authorization.json', JSON.stringify(authorization_tokens), (err) => {
+      if (err) {
+        console.log('There has been an error saving your configuration data.');
+        console.log(err.message);
+        return;
+      }
+      console.log('Configuration saved successfully.')
+    });
+
     console.log('response', response.data);
     return res.json(response.data);
   }
   catch (error) {
-    console.log('error', error);
+    console.log('error', error.message);
     return res.json({error});
   }
 });
 
 // Get Reference id
-app.post('/refreshToken', async (req, res) => {
+app.post('/referenceId', async (req, res) => {
   try {
     const access_token = req.body.access_token;
-    const refresh_token = req.body.refresh_token;
-    const url = `https://api.mtpelerin.com/tokens/refresh`;
+    const url = `https://api.mtpelerin.com/accounts?filter[where][type][inq]=ethereum&filter[where][type][inq]=bitcoin&filter[where][type][inq]=tezos`;
 
-    const data = { token: refresh_token };
+    const newHeaders = {
+      'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101 Firefox/91.0',
+      'Accept': 'application/json',
+      'Accept-Language': 'en-US,en;q=0.5',
+      'Authorization': `Bearer ${access_token}`,
+      'Origin': 'https://widget.mtpelerin.com',
+      'DNT': '1',
+      'Connection': 'keep-alive',
+      'Referer': 'https://widget.mtpelerin.com/',
+      'Sec-Fetch-Dest': 'empty',
+      'Sec-Fetch-Mode': 'cors',
+      'Sec-Fetch-Site': 'same-site',
+      'If-None-Match': 'W/"324-8vbl+ZN49mevT9Lkjdl4buu2NP0"',
+      'TE': 'trailers'
+    };
 
-    const newHeaders = { ...headers, authorization: `Bearer ${access_token}` };
-    const response = await axios.post(url, data, { headers: newHeaders });
+    const response = await axios.get(url, { headers: newHeaders });
     console.log('response', response.data);
     return res.json(response.data);
   }
@@ -258,7 +294,7 @@ app.post('/charge', async (req, res) => {
   try {
     const access_token = req.body.access_token;
     const card = req.body.card;
-    const id = req.body.deviceId;
+    const id = req.body.referenceId;
     const url = `https://api.mtpelerin.com/securion/charges/postCharge`;
 
     const data = { 
@@ -297,6 +333,7 @@ app.post('/charge', async (req, res) => {
   }
 });
 
+// SMS webhook
 app.post('/sms', (req, res) => {
   const data = req.body;
   const smsTime = data['SMS-Time'];

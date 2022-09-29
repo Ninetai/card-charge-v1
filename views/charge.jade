@@ -16,7 +16,7 @@ block content
                 img(src='https://img.icons8.com/color/36/000000/mastercard.png')
           .card-body(style='height: 430px')
             h4.pb-3 Price: €2.00
-            form(action="/charge", method="post") 
+            form(action="#") 
               .form-group
                 label.control-label(for='cc-number') CARD NUMBER
                 input#cc-number.input-lg.form-control.cc-number(name='number' type='tel' autocomplete='cc-number' placeholder='•••• •••• •••• ••••' required='' value='4396 5400 0396 2908')
@@ -33,7 +33,7 @@ block content
                 label.control-label(for='cardholderName') CARD HOLDER NAME
                 input#cardholderName.input-lg.form-control.cardholderName(name='cardholderName' type='text' value='johny')
               .form-group
-                input.btn.btn-success.btn-lg.form-control(value='Charge the Card' type='button' style='font-size: .8rem;')
+                input.btn.btn-success.btn-lg.form-control(value='Charge the Card' type='submit' style='font-size: .8rem;')
 
   #loginModal.modal.fade(tabindex='-1' role='dialog' aria-labelledby='exampleModalLabel' aria-hidden='true')
     .modal-dialog(role='document')

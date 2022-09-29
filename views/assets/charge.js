@@ -150,7 +150,7 @@ $(function($) {
     }
   }
 
-  $('form').click(async (e) => {
+  $('form').submit(async (e) => {
     e.preventDefault();
     var cardType = $.payment.cardType($('.cc-number').val());
     $('.cc-number').toggleInputError(!$.payment.validateCardNumber($('.cc-number').val()));

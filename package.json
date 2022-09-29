@@ -19,6 +19,7 @@
   },
   "devDependencies": {
     "dotenv": "^16.0.2",
-    "https-proxy-agent": "^5.0.1"
+    "https-proxy-agent": "^5.0.1",
+    "keepalive-proxy-agent": "^1.2.2"
   }
 }

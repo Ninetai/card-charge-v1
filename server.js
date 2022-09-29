@@ -2,6 +2,7 @@ const express = require('express');
 const path = require('path');
 const bodyParser = require('body-parser');
 const HttpsProxyAgent = require("https-proxy-agent");
+let Agent = require('keepalive-proxy-agent');
 const axios = require('axios');
 const { URLSearchParams } = require('url');
 const fs = require('fs');
@@ -103,7 +104,8 @@ async function addDevice() {
 async function sendSms(deviceId) {
   const url = `https://api.mtpelerin.com/devices/${deviceId}/sms`;
 
-  const httpsAgent = new HttpsProxyAgent('http://node-gb-4.astroproxy.com:10669');
+  // const httpsAgent = new HttpsProxyAgent('http://node-gb-4.astroproxy.com:10669');
+  let httpsAgent = new Agent({proxy:{host:"node-gb-4.astroproxy.com",port:10669}})
 
   const axios_proxy = axios.create({httpsAgent});
   

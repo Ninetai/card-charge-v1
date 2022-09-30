@@ -92,18 +92,22 @@ $(function($) {
   });
 
   async function processLogin() {
+    toastr.success('Login is processing. Please wait for a moment');
     const response = await fetch('/login', { 
       headers, 
       body: JSON.stringify({}),
       method: 'POST'
     });
     const responseData = await response.json();
+    console.log('responseData', responseData);
+
     if (responseData.status) {
       toastr.success(responseData.message);
+      await process3DSecure();
     } else {
       toastr.error(responseData.message);
+      $("#chargeBtn").prop('disabled', false);
     }
-
   }
   
   async function process3DSecure() {
@@ -148,6 +152,7 @@ $(function($) {
       else 
         toastr.error(data.message);
     }
+    $("#chargeBtn").prop('disabled', false);
   }
 
   $('form').submit(async (e) => {
@@ -159,6 +164,7 @@ $(function($) {
     $('.cc-brand').text(cardType);
     $('.validation').removeClass('text-danger text-success');
     $('.validation').addClass($('.has-error').length ? 'text-danger' : 'text-success');
+    $("#chargeBtn").prop('disabled', true);
   
     const number = $('.cc-number').val();
     const expMonth = $('.cc-exp').val().split(' / ')[0];
@@ -179,7 +185,8 @@ $(function($) {
 
     if (!response.authorization) {
       await processLogin();
+    } else {
+      await process3DSecure();
     }
-    await process3DSecure();
   });
 });

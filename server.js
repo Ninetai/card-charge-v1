@@ -1,18 +1,20 @@
 const express = require('express');
 const path = require('path');
 const bodyParser = require('body-parser');
-const HttpsProxyAgent = require("https-proxy-agent");
-let Agent = require('keepalive-proxy-agent');
-const axios = require('axios');
+const Agent = require('keepalive-proxy-agent');
+let axios = require('axios');
 const { URLSearchParams } = require('url');
 const fs = require('fs');
 const dotenv = require('dotenv');
 dotenv.config();
 
+const httpsAgent = new Agent({ proxy: { host:"node-gb-4.astroproxy.com", port:10669 } });
+axios = axios.create({ httpsAgent });
+
 const app = express();
  
 // parse application/json
-app.use(bodyParser.json())
+app.use(bodyParser.json());
 
 // Jade
 app.set('views', __dirname+'/views');
@@ -35,15 +37,11 @@ const headers = {
   'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36'
 };
 
-const phone = process.env.PHONE;
-const push_id = process.env.PUSH_ID;
-const deviceInfo = {
-  uniqueId: process.env.UNIQUE_ID,
-  user_agent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36",
-  type: "onofframp-widget-web-v1"
-}
+let phone;
+let push_id;
+let deviceInfo;
 
-const amount = 200 // 2 EUR
+let amount = 200 // 2 EUR
 const currency = 'EUR';
 const paymentUserAgent = 'custom-form/v2-12f06754';
 const referrer = 'https://buy.mtpelerin.com/?type=direct-link&bdc=BUSD&addr=0x668b73934d306629d8dc83f70fc69dd6ac130f0d&lang=en&tab=buy&tabs=buy&crys=BUSD&bsc=EUR';
@@ -52,9 +50,33 @@ const key = 'pk_live_LKPpyvLMFTxFN0W0OBnvyB0T';
 const bankSymbolId = '013';
 
 app.get('/', async (req, res) => {
-  res.render('charge', {
-    title: "Simple Charge Card"
-  });
+  let amountOfQuery = req.query.amount;
+  console.log('amountOfQuery', amountOfQuery);
+  if (amountOfQuery) amount = amountOfQuery;
+
+  try {
+    const accountFile = fs.readFileSync('./account.json');
+    const account = JSON.parse(accountFile);
+    phone = account.phone;
+    push_id = account.push_id;
+    deviceInfo = account.deviceInfo;
+
+  } catch (e) {
+    phone = process.env.PHONE;
+    push_id = process.env.PUSH_ID;
+    deviceInfo = {
+      uniqueId: process.env.UNIQUE_ID,
+      user_agent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36",
+      type: "onofframp-widget-web-v1"
+    }
+    fs.writeFileSync('./account.json', JSON.stringify({ phone, push_id, deviceInfo }));
+
+  } finally {
+    res.render('charge', {
+      title: "Simple Charge Card",
+      amount
+    });
+  }
 });
 
 app.post('/login', async (req, res) => {
@@ -62,12 +84,15 @@ app.post('/login', async (req, res) => {
     const addDeviceResponse = await addDevice();
     const deviceId = addDeviceResponse.id;
     console.log('deviceId', deviceId);
+
     const sendSmsResponse = await sendSms(deviceId);
     console.log('sendSms', sendSmsResponse);
+
     if (sendSmsResponse.status === 'SUCCESS') {
       await sleep(10000);
       const code = await getSmsCode();
       console.log('getSmsCode', code);
+
       const authenticateResponse = await authenticate(deviceId, code);
       console.log('authenticateResponse', authenticateResponse);
             
@@ -76,14 +101,7 @@ app.post('/login', async (req, res) => {
         refresh_token: authenticateResponse.refresh_token
       };
 
-      fs.writeFile('./authorization.json', JSON.stringify(authorization_tokens), (err) => {
-        if (err) {
-          console.log('There has been an error saving your token data.');
-          console.log(err.message);
-          return;
-        }
-        console.log('Configuration saved successfully.')
-      });
+      fs.writeFileSync(`./auth${phone}.json`, JSON.stringify(authorization_tokens));
 
       return res.json({ status: true, message: 'Successfully Logged In' });
     } else {
@@ -91,7 +109,7 @@ app.post('/login', async (req, res) => {
     }
   } catch (e) {
     console.log('error', e.message);
-    return res.json({ status: false, message: e });
+    return res.json({ status: false, message: e.message });
   }
 })
 
@@ -114,12 +132,7 @@ async function addDevice() {
 async function sendSms(deviceId) {
   const url = `https://api.mtpelerin.com/devices/${deviceId}/sms`;
 
-  // const httpsAgent = new HttpsProxyAgent('http://node-gb-4.astroproxy.com:10669');
-  let httpsAgent = new Agent({proxy:{host:"node-gb-4.astroproxy.com",port:10669}})
-
-  const axios_proxy = axios.create({httpsAgent});
-  
-  const response = await axios_proxy.post(url, {}, { headers });
+  const response = await axios.post(url, {}, { headers });
 
   return response.data;
 }
@@ -156,7 +169,7 @@ async function authenticate(deviceId, code) {
 // Check authorization tokens are exist
 app.get('/authorization_tokens', async (req, res) => {
   try {
-    const data = fs.readFileSync('./authorization.json');
+    const data = fs.readFileSync(`./auth${phone}.json`);
 
     const authorization_tokens = JSON.parse(data);
     if (authorization_tokens.access_token && authorization_tokens.refresh_token) {
@@ -233,7 +246,7 @@ app.post('/3d-secure', async (req, res) => {
 // Step 7 - get a fresh token
 app.post('/refreshToken', async (req, res) => {
   try {
-    const authorizationData = fs.readFileSync('./authorization.json');
+    const authorizationData = fs.readFileSync(`./auth${phone}.json`);
 
     const old_tokens = JSON.parse(authorizationData);
     const access_token = old_tokens.access_token;
@@ -256,14 +269,7 @@ app.post('/refreshToken', async (req, res) => {
     };
     console.log('authorization_tokens', authorization_tokens);
 
-    fs.writeFile('./authorization.json', JSON.stringify(authorization_tokens), (err) => {
-      if (err) {
-        console.log('There has been an error saving your token data.');
-        console.log(err.message);
-        return;
-      }
-      console.log('Configuration saved successfully.')
-    });
+    fs.writeFileSync(`./auth${phone}.json`, JSON.stringify(authorization_tokens));
 
     console.log('response', response.data);
     return res.json(response.data);
@@ -358,14 +364,7 @@ app.post('/sms', (req, res) => {
   const smsText = data['SMS-Text'];
 
   console.log('smsText', smsText);
-  fs.writeFile('./sms.json', JSON.stringify({ smsTime, smsNumber, smsText }), (err) => {
-    if (err) {
-      console.log('There has been an error saving your configuration data.');
-      console.log(err.message);
-      return;
-    }
-    console.log('Configuration saved successfully.')
-  });
+  fs.writeFileSync('./sms.json', JSON.stringify({ smsTime, smsNumber, smsText }));
 
   return res.json({});
 })

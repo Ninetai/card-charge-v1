@@ -6,6 +6,7 @@ let cardInputData;
 let url3dsecure;
 let cardId;
 let referenceId;
+let iframeLocationChangedCount = 0;
 
 const headers = {
   "content-type": "application/json; charset=UTF-8"
@@ -86,10 +87,14 @@ $(function($) {
     await processCharge();
   })
   
-  $('#processChargeBtn').click(async () => {
-    $('#secureModal').modal('hide');
-    await processCharge();
-  });
+  $('#securePageIframe').on('load', function () {
+    console.log('iframe-location', $(this)[0].contentWindow.location);
+    iframeLocationChangedCount ++;
+    if (iframeLocationChangedCount === 3) {
+      iframeLocationChangedCount = 0;
+      $('#secureModal').modal('hide');
+    }
+  })
 
   async function processLogin() {
     toastr.success('Login is processing. Please wait for a moment');

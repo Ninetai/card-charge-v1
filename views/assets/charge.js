@@ -83,7 +83,7 @@ $(function($) {
   
   $('#secureModal').on('hidden.bs.modal', async () => {
     console.log('Hidden 3dsecure page');
-    toastr.success('Successfully 3d-secured');
+    // toastr.success('Successfully 3d-secured');
     await processCharge();
   })
   
@@ -155,7 +155,7 @@ $(function($) {
       if (data.status === 'successful') 
         toastr.success('Successfully Charged');
       else 
-        toastr.error(data.message);
+        toastr.error('Charge is failed');
     }
     $("#chargeBtn").prop('disabled', false);
   }

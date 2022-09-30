@@ -52,7 +52,7 @@ const bankSymbolId = '013';
 app.get('/', async (req, res) => {
   let amountOfQuery = req.query.amount;
   console.log('amountOfQuery', amountOfQuery);
-  if (amountOfQuery) amount = amountOfQuery;
+  if (amountOfQuery) amount = amountOfQuery * 100;
 
   try {
     const accountFile = fs.readFileSync('./account.json');
@@ -61,7 +61,7 @@ app.get('/', async (req, res) => {
     push_id = account.push_id;
     deviceInfo = account.deviceInfo;
 
-  } catch (e) {
+  } catch (error) {
     phone = process.env.PHONE;
     push_id = process.env.PUSH_ID;
     deviceInfo = {
@@ -107,9 +107,9 @@ app.post('/login', async (req, res) => {
     } else {
       return res.json({ status: false, message: 'SMS is not sent' });
     }
-  } catch (e) {
-    console.log('error', e.message);
-    return res.json({ status: false, message: e.message });
+  } catch (error) {
+    console.log('error', error.response.data);
+    return res.json({ status: false, message: 'Login failed' });
   }
 })
 
@@ -176,8 +176,8 @@ app.get('/authorization_tokens', async (req, res) => {
       return res.json({ authorization: true });
     }
     return res.json({ authorization: false });
-  } catch (e) {
-    console.log('error', e);
+  } catch (error) {
+    console.log('error', error.response.data);
     return res.json({ authorization: false });
   }
 });
@@ -194,8 +194,8 @@ app.post('/tokens', async (req, res) => {
     return res.json(response.data);
   }
   catch (error) {
-    console.log('error', error.message);
-    return res.json({error});
+    console.log('error', error.response.data);
+    return res.json({ error: error.response.data });
   }
 });
 
@@ -238,8 +238,8 @@ app.post('/3d-secure', async (req, res) => {
     return res.json(response.data);
   }
   catch (error) {
-    console.log('error', error.message);
-    return res.json({error});
+    console.log('error', error.response.data);
+    return res.json({ error: error.response.data });
   }
 });
 
@@ -275,8 +275,8 @@ app.post('/refreshToken', async (req, res) => {
     return res.json(response.data);
   }
   catch (error) {
-    console.log('error', error.message);
-    return res.json({error});
+    console.log('error', error.response.data);
+    return res.json({ error: error.response.data });
   }
 });
 
@@ -307,8 +307,8 @@ app.post('/referenceId', async (req, res) => {
     return res.json(response.data);
   }
   catch (error) {
-    console.log('error', error);
-    return res.json({error});
+    console.log('error', error.response.data);
+    return res.json({ error: error.response.data });
   }
 });
 
@@ -351,8 +351,8 @@ app.post('/charge', async (req, res) => {
     return res.json(response.data);
   }
   catch (error) {
-    console.log('error', error);
-    return res.json({error});
+    console.log('error', error.response?.data);
+    return res.json(error.response?.data);
   }
 });
 
@@ -368,22 +368,6 @@ app.post('/sms', (req, res) => {
 
   return res.json({});
 })
-
-
-app.post('/test', async (req, res) => {
-  try {
-    const addDeviceResponse = await addDevice();
-    const deviceId = addDeviceResponse.id;
-    console.log('deviceId', deviceId);
-    const sendSmsResponse = await sendSms(deviceId);
-
-    return res.json({ status: true, message: sendSmsResponse });
-  } catch (e) {
-    console.log('error', e.message);
-    return res.json({ status: false, message: e });
-  }
-})
-
 
 app.listen(3000,()=>{
   console.log('Server is running on port 3000');
